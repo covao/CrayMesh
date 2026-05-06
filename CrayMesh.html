@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrayMesh</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚝</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#070b12;--surface:#0c1422;--surface2:#101e30;
+  --border:#1b3554;--accent:#00d4ff;--accent2:#0099bb;
+  --warn:#ff6b35;--text:#b8d8ef;--text-dim:#3d6a8a;--text-bright:#e4f2ff;
+  --green:#00ff9d;--font-mono:'JetBrains Mono',monospace;--font-d:'Syne',sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font-mono);display:flex;flex-direction:column}
+
+/* ── Header ── */
+header{
+  height:50px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;
+  position:relative;z-index:5;
+}
+.logo{font-family:var(--font-mono);font-weight:700;font-size:15px;color:var(--accent);letter-spacing:1px;white-space:nowrap;text-transform:uppercase}
+.logo em{color:var(--text-dim);font-style:normal;font-weight:400}
+.vline{width:1px;height:22px;background:var(--border)}
+#fileName{font-size:11px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stats{display:flex;gap:14px;font-size:10px;color:var(--text-dim);white-space:nowrap}
+.sv{color:var(--accent)}
+.btn{
+  padding:6px 14px;border:1px solid var(--border);background:transparent;
+  color:var(--text);font-family:var(--font-mono);font-size:10px;cursor:pointer;
+  transition:all .15s;letter-spacing:.8px;text-transform:uppercase;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.25;cursor:not-allowed;pointer-events:none}
+.btn-p{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+.btn-p:hover{background:#00b8de;border-color:#00b8de;color:var(--bg)}
+
+/* ── Layout ── */
+.main{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ── Sidebar collapse ── */
+aside{
+  width:248px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;
+  transition:width .22s ease, opacity .18s ease;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+aside::-webkit-scrollbar{width:3px}
+aside::-webkit-scrollbar-track{background:transparent}
+aside::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+aside::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+aside.collapsed{width:0;opacity:0;overflow:hidden;border-right:none}
+.hamburger{
+  padding:6px 10px;border:1px solid var(--border);background:transparent;
+  color:var(--text);font-size:14px;cursor:pointer;transition:all .15s;line-height:1;
+}
+.hamburger:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Color picker swatch */
+.color-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.color-swatch{
+  width:28px;height:28px;border-radius:3px;border:1px solid var(--border);
+  cursor:pointer;flex-shrink:0;outline:none;padding:0;background:none;
+  position:relative;overflow:hidden;
+}
+.color-swatch input[type=color]{
+  position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);
+  cursor:pointer;opacity:0;
+}
+.color-bar{
+  flex:1;height:16px;border-radius:3px;cursor:pointer;border:1px solid var(--border);
+  background:linear-gradient(to right,
+    hsl(0,80%,50%),hsl(30,80%,50%),hsl(60,80%,50%),hsl(120,80%,50%),
+    hsl(180,80%,50%),hsl(210,80%,50%),hsl(240,80%,50%),hsl(300,80%,50%),hsl(360,80%,50%));
+  position:relative;
+}
+.color-bar-thumb{
+  position:absolute;top:-3px;width:6px;height:22px;border-radius:2px;
+  background:#fff;box-shadow:0 0 3px rgba(0,0,0,.6);pointer-events:none;
+  transform:translateX(-50%);
+}
+
+.sec{border-bottom:1px solid var(--border);padding:14px 16px}
+.sec-t{
+  font-size:8px;text-transform:uppercase;letter-spacing:2.5px;color:var(--text-dim);
+  margin-bottom:13px;display:flex;align-items:center;gap:8px
+}
+.sec-t::after{content:'';flex:1;height:1px;background:var(--border)}
+.cr{margin-bottom:12px}
+.cl{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.cl span:first-child{color:var(--text-bright)}
+.cval{color:var(--accent);font-weight:500}
+input[type=range]{
+  width:100%;height:2px;background:var(--border);outline:none;
+  -webkit-appearance:none;cursor:pointer;border-radius:1px;accent-color:var(--accent);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:11px;height:11px;border-radius:50%;
+  background:var(--accent);cursor:pointer;box-shadow:0 0 6px rgba(0,212,255,.5);
+}
+.tr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;font-size:11px;color:var(--text-bright)}
+.tog{
+  width:34px;height:17px;background:var(--border);border-radius:9px;
+  cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;
+}
+.tog.on{background:var(--accent)}
+.tog::after{
+  content:'';position:absolute;width:11px;height:11px;border-radius:50%;
+  background:#fff;top:3px;left:3px;transition:left .2s;
+}
+.tog.on::after{left:20px}
+.ab{display:flex;flex-direction:column;gap:7px}
+.ab .btn{width:100%;text-align:center;padding:9px}
+.warn-t{font-size:9px;color:var(--warn);margin-top:5px;line-height:1.5}
+
+.axis-row{display:flex;gap:4px;margin-bottom:11px}
+.axis-pill{
+  flex:1;text-align:center;padding:5px 0;border:1px solid var(--border);
+  font-size:10px;cursor:pointer;letter-spacing:1.5px;transition:all .15s;
+  color:var(--text-dim);font-family:var(--font-mono);
+}
+.axis-pill.on{background:var(--warn);border-color:var(--warn);color:var(--bg);font-weight:700}
+.axis-pill:hover:not(.on){border-color:var(--warn);color:var(--warn)}
+.cut-info{
+  font-size:9px;color:var(--text-dim);line-height:1.6;padding:7px 0 4px;
+}
+.keep-badge{
+  display:inline-block;padding:1px 6px;font-size:8px;letter-spacing:1px;
+  border:1px solid;margin-left:4px;
+}
+.keep-above{border-color:var(--accent);color:var(--accent)}
+.keep-below{border-color:var(--warn);color:var(--warn)}
+.info-box{
+  margin:14px 16px 0;padding:10px 12px;
+  background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.1);
+  font-size:9px;color:var(--text-dim);line-height:1.6;
+}
+.info-box strong{color:var(--text);display:block;margin-bottom:4px;font-size:10px}
+
+/* Strength mode tabs */
+.mode-tabs{display:flex;gap:3px;margin-bottom:11px}
+.mode-tab{
+  flex:1;text-align:center;padding:4px 0;border:1px solid var(--border);
+  font-size:9px;cursor:pointer;letter-spacing:1.2px;transition:all .15s;
+  color:var(--text-dim);font-family:var(--font-mono);text-transform:uppercase;
+}
+.mode-tab.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+.mode-tab:hover:not(.on){border-color:var(--accent);color:var(--accent)}
+.axis-label{
+  font-size:9px;font-weight:700;letter-spacing:1.5px;
+  width:14px;flex-shrink:0;color:var(--text-dim);
+}
+.axis-label.lx{color:#ff6b6b}
+.axis-label.ly{color:#6bff9b}
+.axis-label.lz{color:#6bb8ff}
+.per-axis-row{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.per-axis-row .cval{min-width:30px;text-align:right}
+
+
+
+.vp{flex:1;position:relative;background:#040710;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+
+/* Drop zone */
+.dz{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;
+  background:linear-gradient(135deg,#040812 0%,#080f1e 100%);
+  z-index:10;transition:background .2s;
+}
+.dz.ov{background:rgba(0,212,255,.05);outline:2px dashed var(--accent);outline-offset:-2px}
+.dz-hex{
+  position:relative;width:72px;height:72px;display:flex;align-items:center;justify-content:center;
+}
+.dz-hex svg{position:absolute;inset:0}
+.dz-hex span{font-size:26px;position:relative;z-index:1}
+.dz-title{font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--text-bright);text-transform:uppercase;letter-spacing:2px}
+.dz-sub{font-size:10px;color:var(--text-dim);letter-spacing:1px}
+.dz-grid{
+  position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);
+  background-size:40px 40px;
+}
+
+/* Progress */
+.prog{
+  position:absolute;inset:0;background:rgba(4,7,16,.88);
+  display:none;align-items:center;justify-content:center;z-index:20;
+}
+.prog.on{display:flex}
+.prog-box{text-align:center}
+.prog-lbl{font-size:11px;color:var(--accent);letter-spacing:3px;margin-bottom:14px}
+.prog-track{width:180px;height:2px;background:var(--border);overflow:hidden;border-radius:1px}
+.prog-fill{
+  height:100%;background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  animation:prog-anim 1.2s ease-in-out infinite;width:60%;
+}
+@keyframes prog-anim{0%{transform:translateX(-100%)}100%{transform:translateX(267%)}}
+
+/* HUD */
+.hud{
+  position:absolute;bottom:12px;left:12px;font-size:9px;color:var(--text-dim);
+  letter-spacing:.8px;text-transform:uppercase;line-height:1.8;pointer-events:none;
+  display:none;
+}
+.hud-tl{position:absolute;top:12px;right:12px;font-size:9px;color:var(--text-dim);letter-spacing:.8px;display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="hamburger" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+  <a class="logo" href="https://github.com/covao/CrayMesh" target="_blank" rel="noopener"
+     style="text-decoration:none;display:flex;align-items:center;gap:6px">
+    <span style="font-size:17px;line-height:1">🚝</span>Cray<em>Mesh</em>
+  </a>
+  <div class="vline"></div>
+  <div id="fileName">Drop an STL file to get started</div>
+  <div class="stats" id="statsBar" style="display:none">
+    <span>Verts <span class="sv" id="sv">0</span></span>
+    <span>Faces <span class="sv" id="sf">0</span></span>
+  </div>
+  <div class="vline"></div>
+  <button class="btn" id="resetBtn" disabled onclick="resetMesh()">↺ RESET</button>
+  <button class="btn btn-p" id="exportBtn" disabled onclick="exportSTL()">↓ EXPORT STL</button>
+</header>
+
+<div class="main">
+<aside>
+  <div class="sec">
+    <div class="sec-t">Smoothing</div>
+    <div class="cr">
+      <div class="cl"><span>Iterations</span><span class="cval" id="iterVal">24</span></div>
+      <input type="range" id="iterations" min="1" max="128" value="24"
+        oninput="document.getElementById('iterVal').textContent=this.value">
+    </div>
+    <!-- Strength mode -->
+    <div style="font-size:10px;color:var(--text-bright);margin-bottom:6px">Strength</div>
+    <div class="mode-tabs">
+      <div class="mode-tab on" id="modeUniform" onclick="setStrengthMode('uniform')">Uniform</div>
+      <div class="mode-tab"   id="modePerAxis" onclick="setStrengthMode('peraxis')">Per-Axis</div>
+    </div>
+    <!-- Uniform -->
+    <div id="uniformBlock" class="cr">
+      <div class="cl"><span>All Axes</span><span class="cval" id="strengthVal">0.26</span></div>
+      <input type="range" id="strength" min="0.01" max="1" step="0.01" value="0.26"
+        oninput="document.getElementById('strengthVal').textContent=parseFloat(this.value).toFixed(2)">
+    </div>
+    <!-- Per-Axis -->
+    <div id="perAxisBlock" style="display:none;margin-bottom:4px">
+      <div class="per-axis-row">
+        <span class="axis-label lx">X</span>
+        <input type="range" id="strengthX" min="0" max="1" step="0.01" value="0.26"
+          oninput="document.getElementById('sxVal').textContent=parseFloat(this.value).toFixed(2)">
+        <span class="cval" id="sxVal">0.26</span>
+      </div>
+      <div class="per-axis-row">
+        <span class="axis-label ly">Y</span>
+        <input type="range" id="strengthY" min="0" max="1" step="0.01" value="0.26"
+          oninput="document.getElementById('syVal').textContent=parseFloat(this.value).toFixed(2)">
+        <span class="cval" id="syVal">0.26</span>
+      </div>
+      <div class="per-axis-row">
+        <span class="axis-label lz">Z</span>
+        <input type="range" id="strengthZ" min="0" max="1" step="0.01" value="0.26"
+          oninput="document.getElementById('szVal').textContent=parseFloat(this.value).toFixed(2)">
+        <span class="cval" id="szVal">0.26</span>
+      </div>
+    </div>
+    <div class="cr">
+      <div class="cl"><span>Preserve Volume (Taubin)</span>
+        <div class="tog" id="taubinToggle" onclick="tog(this)"></div>
+      </div>
+    </div>
+    <div class="cr">
+      <div class="cl"><span>Sharp Preservation</span><span class="cval" id="sharpVal">0.60</span></div>
+      <input type="range" id="sharpPreserve" min="0" max="1" step="0.01" value="0.6"
+        oninput="document.getElementById('sharpVal').textContent=parseFloat(this.value).toFixed(2)">
+      <div style="font-size:9px;color:var(--text-dim);margin-top:4px;line-height:1.5">
+        Reduces smoothing on high-curvature vertices.<br>
+        0 = off &nbsp;|&nbsp; 1 = fully lock sharp edges
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">Subdivision</div>
+    <div class="cr">
+      <div class="cl"><span>Level</span><span class="cval" id="subVal">3</span></div>
+      <input type="range" id="subdivision" min="0" max="4" step="1" value="3"
+        oninput="onSubChange(this.value)">
+      <div class="warn-t" id="subWarn">⚠ High levels increase processing time<br>Polygon count scales by 4^N</div>
+    </div>
+    <div class="ab">
+      <button class="btn btn-p" id="applyBtn" disabled onclick="applySmoothing()">▶ APPLY SMOOTHING</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">Display</div>
+    <!-- Model color -->
+    <div style="font-size:10px;color:var(--text-bright);margin-bottom:7px">Model Color</div>
+    <div class="color-row">
+      <label class="color-swatch" id="colorSwatch" style="background:#1e6fa0" title="Pick color">
+        <input type="color" id="colorPicker" value="#1e6fa0" oninput="onColorPick(this.value)">
+      </label>
+      <div class="color-bar" id="colorBar" onclick="onColorBarClick(event)">
+        <div class="color-bar-thumb" id="colorBarThumb" style="left:57%"></div>
+      </div>
+    </div>
+    <div class="tr" style="margin-top:4px"><span>Wireframe Overlay</span><div class="tog on" id="wireToggle" onclick="togWire(this)"></div></div>
+    <div class="tr"><span>Smooth Shading</span><div class="tog" id="smoothToggle" onclick="togSmooth(this)"></div></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">Cut Plane</div>
+    <div class="cr">
+      <div class="cl" style="margin-bottom:6px"><span>Axis</span></div>
+      <div class="axis-row">
+        <div class="axis-pill" data-axis="X" onclick="selectCutAxis('X')">X</div>
+        <div class="axis-pill" data-axis="Y" onclick="selectCutAxis('Y')">Y</div>
+        <div class="axis-pill on" data-axis="Z" onclick="selectCutAxis('Z')">Z</div>
+      </div>
+    </div>
+    <div class="cr">
+      <div class="cl"><span>Position</span><span class="cval" id="cutPosVal">—</span></div>
+      <input type="range" id="cutPos" min="0" max="1" step="0.001" value="0.5" disabled
+        oninput="onCutPosChange(this.value)">
+    </div>
+    <div class="tr" style="margin-bottom:6px">
+      <span style="display:flex;align-items:center;gap:5px">
+        Keep Side <span class="keep-badge keep-above" id="keepBadge">ABOVE</span>
+      </span>
+      <div class="tog" id="cutFlipToggle" onclick="togCutFlip(this)"></div>
+    </div>
+    <div class="tr" style="margin-bottom:4px">
+      <span>Show Preview</span>
+      <div class="tog on" id="cutPreviewToggle" onclick="togCutPreview(this)"></div>
+    </div>
+    <div class="cut-info" id="cutInfo">Load a model to enable the slider</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">Shell / Hollow</div>
+    <div class="cr">
+      <div class="cl"><span>Wall Thickness</span><span class="cval" id="thickVal">—</span></div>
+      <input type="range" id="thickness" min="0" max="1" step="0.0001" value="0.1" disabled
+        oninput="onThickChange(this.value)">
+      <div style="display:flex;gap:6px;margin-top:7px;align-items:center">
+        <input type="number" id="thickInput" min="0.0001" step="any" value=""
+          placeholder="Enter value"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text-bright);
+                 font-family:var(--font-mono);font-size:10px;padding:5px 7px;outline:none;width:0"
+          oninput="onThickInputChange(this.value)">
+        <span style="font-size:9px;color:var(--text-dim);white-space:nowrap">mm equiv.</span>
+      </div>
+    </div>
+    <div class="cr" style="margin-bottom:4px">
+      <div style="font-size:9px;color:var(--text-dim);line-height:1.6" id="thickHint">
+        Load a model to<br>auto-set recommended value
+      </div>
+    </div>
+    <div id="hollowCutNote" style="display:none;font-size:9px;color:var(--green);
+         border:1px solid rgba(0,255,157,.2);padding:6px 8px;margin-bottom:8px;line-height:1.6">
+      ✓ Opening via cut plane: <span id="hollowCutLabel">Y axis</span>
+    </div>
+    <div class="ab">
+      <button class="btn btn-p" id="hollowBtn" disabled onclick="applyHollow()"
+        style="background:#00ff9d;border-color:#00ff9d;color:#040710">⬡ APPLY HOLLOW</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">Actions</div>
+    <div class="ab">
+      <button class="btn" id="undoBtn" disabled onclick="undoSmoothing()">↩ UNDO LAST</button>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>Controls</strong>
+    Left drag: Orbit<br>
+    Right drag / 2-finger: Pan<br>
+    Scroll: Zoom &nbsp;|&nbsp; F: Reset camera
+  </div>
+  <div style="height:14px"></div>
+</aside>
+
+<div class="vp" id="viewport">
+  <canvas id="canvas3d"></canvas>
+
+  <div class="dz" id="dropZone">
+    <div class="dz-grid"></div>
+    <div class="dz-hex">
+      <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M36 4L68 22V50L36 68L4 50V22L36 4Z" stroke="#1b3554" stroke-width="1.5"/>
+        <path d="M36 12L60 26V54L36 60L12 46V18L36 12Z" stroke="#1b3554" stroke-width="1" opacity="0.5"/>
+      </svg>
+      <span>⬡</span>
+    </div>
+    <div class="dz-title">Drop an STL file here</div>
+    <div class="dz-sub">or</div>
+    <button class="btn" onclick="document.getElementById('fileInput').click()">Browse file</button>
+    <input type="file" id="fileInput" accept=".stl" style="display:none" onchange="handleFile(this)">
+  </div>
+
+  <div class="prog" id="prog">
+    <div class="prog-box">
+      <div class="prog-lbl" id="progLbl">PROCESSING...</div>
+      <div class="prog-track"><div class="prog-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="hud" id="hud">
+    ORBIT: Left drag &nbsp;|&nbsp; ZOOM: Scroll &nbsp;|&nbsp; PAN: Right drag
+  </div>
+  <div class="hud-tl" id="hudTL" id="hudTL"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ═══════════════════════════════════════════════
+//  Three.js Setup
+// ═══════════════════════════════════════════════
+const canvas = document.getElementById('canvas3d');
+const viewport = document.getElementById('viewport');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x040710);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.001, 100000);
+camera.up.set(0, 0, 1);          // Z-up
+camera.position.set(12, -10, 8); // front-right-top in Z-up space
+
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+
+const dLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dLight.position.set(5, 10, 7);
+dLight.castShadow = true;
+scene.add(dLight);
+
+const dLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+dLight2.position.set(-8, 3, -5);
+scene.add(dLight2);
+
+const dLight3 = new THREE.DirectionalLight(0xffffff, 0.25);
+dLight3.position.set(0, -5, 0);
+scene.add(dLight3);
+
+// Grid — off by default; rotated to XY plane for Z-up
+const gridHelper = new THREE.GridHelper(40, 40, 0x1b3554, 0x0d2040);
+gridHelper.rotation.x = Math.PI / 2;
+gridHelper.visible = false;
+scene.add(gridHelper);
+
+// Axes
+const axesHelper = new THREE.AxesHelper(1);
+axesHelper.visible = false;
+scene.add(axesHelper);
+
+// Resize
+function onResize() {
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+onResize();
+new ResizeObserver(onResize).observe(viewport);
+
+// Animate
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// Key shortcuts
+window.addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') fitCamera();
+});
+
+// ═══════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════
+let meshObj = null, wireObj = null;
+let wPositions = null, wIndices = null;   // working
+let origPositions = null, origIndices = null; // original loaded
+let prevPositions = null, prevIndices = null; // undo buffer
+let optSmooth = false; // smooth shading off by default
+let optWire = true;    // wireframe on by default
+let optDoubleSide = true;
+let meshColor = 0x1e6fa0;
+
+// Cut plane state
+let cutPlaneAxis = 'Z';
+let cutPlaneFlip = false;
+let cutPreviewGroup = null;
+let cutPreviewEnabled = true;   // preview on by default
+const useAsOpening = true;      // cut plane always used as hollow opening
+
+// ═══════════════════════════════════════════════
+//  STL Parser
+// ═══════════════════════════════════════════════
+function parseSTL(buf) {
+  // Detect ASCII vs binary
+  const header = new TextDecoder().decode(new Uint8Array(buf, 0, 256));
+  const isASCII = header.trimStart().startsWith('solid') &&
+                  /facet\s+normal/i.test(header);
+  return isASCII
+    ? parseASCII(new TextDecoder().decode(buf))
+    : parseBinary(buf);
+}
+
+function parseBinary(buf) {
+  const view = new DataView(buf);
+  const n = view.getUint32(80, true);
+  const pos = new Float32Array(n * 9);
+  let offset = 84;
+  for (let i = 0; i < n; i++) {
+    offset += 12; // skip face normal
+    for (let v = 0; v < 9; v++) {
+      pos[i * 9 + v] = view.getFloat32(offset, true);
+      offset += 4;
+    }
+    offset += 2; // attribute
+  }
+  return pos;
+}
+
+function parseASCII(txt) {
+  const pos = [];
+  const re = /vertex\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)/g;
+  let m;
+  while ((m = re.exec(txt)) !== null)
+    pos.push(+m[1], +m[2], +m[3]);
+  return new Float32Array(pos);
+}
+
+// ═══════════════════════════════════════════════
+//  Vertex Welding
+// ═══════════════════════════════════════════════
+function weldVertices(flat) {
+  const map = new Map();
+  const pts = [];
+  const idx = new Uint32Array(flat.length / 3);
+  for (let i = 0; i < flat.length; i += 3) {
+    const x = flat[i], y = flat[i+1], z = flat[i+2];
+    const k = `${x.toFixed(6)}_${y.toFixed(6)}_${z.toFixed(6)}`;
+    let id = map.get(k);
+    if (id === undefined) { id = pts.length / 3; map.set(k, id); pts.push(x, y, z); }
+    idx[i / 3] = id;
+  }
+  return { positions: new Float32Array(pts), indices: idx };
+}
+
+// ═══════════════════════════════════════════════
+//  Adjacency
+// ═══════════════════════════════════════════════
+function buildAdj(indices, nv) {
+  const sets = Array.from({ length: nv }, () => new Set());
+  for (let i = 0; i < indices.length; i += 3) {
+    const a = indices[i], b = indices[i+1], c = indices[i+2];
+    sets[a].add(b); sets[a].add(c);
+    sets[b].add(a); sets[b].add(c);
+    sets[c].add(a); sets[c].add(b);
+  }
+  return sets.map(s => Array.from(s));
+}
+
+// ═══════════════════════════════════════════════
+//  Sharp Feature Detection
+// ═══════════════════════════════════════════════
+// Returns Float32Array[nv] in [0,1]:
+//   0 = flat (no angle variation between adjacent faces)
+//   1 = very sharp (180° between adjacent face normals)
+// Algorithm: for each vertex, compute normalised face normals of all
+// incident faces, then take the maximum pairwise angle between them.
+function computeVertexSharpness(positions, indices) {
+  const nv = positions.length / 3;
+  const nf = indices.length / 3;
+
+  // Face unit normals
+  const fn = new Float32Array(nf * 3);
+  for (let i = 0; i < nf; i++) {
+    const a=indices[i*3], b=indices[i*3+1], c=indices[i*3+2];
+    const ax=positions[a*3],ay=positions[a*3+1],az=positions[a*3+2];
+    const ux=positions[b*3]-ax, uy=positions[b*3+1]-ay, uz=positions[b*3+2]-az;
+    const vx=positions[c*3]-ax, vy=positions[c*3+1]-ay, vz=positions[c*3+2]-az;
+    let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+    const l=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+    fn[i*3]=nx/l; fn[i*3+1]=ny/l; fn[i*3+2]=nz/l;
+  }
+
+  // Vertex → incident face list
+  const vFaces = Array.from({length:nv}, ()=>[]);
+  for (let i=0; i<nf; i++) {
+    vFaces[indices[i*3]].push(i);
+    vFaces[indices[i*3+1]].push(i);
+    vFaces[indices[i*3+2]].push(i);
+  }
+
+  // Per-vertex max dihedral angle (normalised to [0,1])
+  const sharpness = new Float32Array(nv);
+  for (let v=0; v<nv; v++) {
+    const fs = vFaces[v];
+    const n = fs.length;
+    if (n < 2) continue;
+    let maxDot = 1; // dot=1 → angle=0 (flat)
+    for (let i=0; i<n; i++) {
+      const fi = fs[i]*3;
+      for (let j=i+1; j<n; j++) {
+        const fj = fs[j]*3;
+        const dot = fn[fi]*fn[fj] + fn[fi+1]*fn[fj+1] + fn[fi+2]*fn[fj+2];
+        if (dot < maxDot) maxDot = dot; // smallest dot = largest angle
+      }
+    }
+    // angle = acos(maxDot) ∈ [0, π]  → normalise to [0,1]
+    sharpness[v] = Math.acos(Math.max(-1, Math.min(1, maxDot))) / Math.PI;
+  }
+  return sharpness;
+}
+
+// ═══════════════════════════════════════════════
+//  Laplacian Smoothing  (per-axis λ + optional weight mask)
+// ═══════════════════════════════════════════════
+// λvec: {x, y, z}   weights: Float32Array[nv] or null (= all 1)
+function laplacian(positions, adj, λvec, weights) {
+  const nv = positions.length / 3;
+  const out = new Float32Array(positions);
+  const lx = λvec.x, ly = λvec.y, lz = λvec.z;
+  for (let v = 0; v < nv; v++) {
+    const nb = adj[v];
+    if (!nb.length) continue;
+    const w = weights ? weights[v] : 1;
+    if (w === 0) continue;
+    let sx = 0, sy = 0, sz = 0;
+    for (const n of nb) { sx += positions[n*3]; sy += positions[n*3+1]; sz += positions[n*3+2]; }
+    const k = nb.length;
+    const dx = sx/k - positions[v*3];
+    const dy = sy/k - positions[v*3+1];
+    const dz = sz/k - positions[v*3+2];
+    out[v*3]   = positions[v*3]   + w * lx * dx;
+    out[v*3+1] = positions[v*3+1] + w * ly * dy;
+    out[v*3+2] = positions[v*3+2] + w * lz * dz;
+  }
+  return out;
+}
+
+// λvec: {x,y,z}  weights: Float32Array|null
+function smoothMesh(positions, indices, iterations, λvec, taubin, weights) {
+  const nv = positions.length / 3;
+  const adj = buildAdj(indices, nv);
+  let pos = new Float32Array(positions);
+  const μvec = taubin
+    ? { x: -(λvec.x + 0.02), y: -(λvec.y + 0.02), z: -(λvec.z + 0.02) }
+    : null;
+
+  for (let i = 0; i < iterations; i++) {
+    pos = laplacian(pos, adj, λvec, weights);
+    if (taubin) pos = laplacian(pos, adj, μvec, weights);
+  }
+  return pos;
+}
+
+// Read strength from UI → returns {x,y,z}
+function readStrengthVec() {
+  if (strengthMode === 'uniform') {
+    const v = +document.getElementById('strength').value;
+    return { x: v, y: v, z: v };
+  }
+  return {
+    x: +document.getElementById('strengthX').value,
+    y: +document.getElementById('strengthY').value,
+    z: +document.getElementById('strengthZ').value,
+  };
+}
+
+// ═══════════════════════════════════════════════
+//  Midpoint Subdivision
+// ═══════════════════════════════════════════════
+function subdivide(positions, indices) {
+  const newPts = Array.from(positions); // grow-able array
+  const newIdx = [];
+  const edgeMap = new Map();
+
+  function midpoint(a, b) {
+    const key = a < b ? `${a}_${b}` : `${b}_${a}`;
+    let id = edgeMap.get(key);
+    if (id === undefined) {
+      id = newPts.length / 3;
+      edgeMap.set(key, id);
+      newPts.push(
+        (positions[a*3]   + positions[b*3])   / 2,
+        (positions[a*3+1] + positions[b*3+1]) / 2,
+        (positions[a*3+2] + positions[b*3+2]) / 2
+      );
+    }
+    return id;
+  }
+
+  for (let i = 0; i < indices.length; i += 3) {
+    const a = indices[i], b = indices[i+1], c = indices[i+2];
+    const ab = midpoint(a, b), bc = midpoint(b, c), ac = midpoint(a, c);
+    newIdx.push(a, ab, ac,  ab, b, bc,  ac, bc, c,  ab, bc, ac);
+  }
+
+  return { positions: new Float32Array(newPts), indices: new Uint32Array(newIdx) };
+}
+
+// ═══════════════════════════════════════════════
+//  Build Three.js Geometry
+// ═══════════════════════════════════════════════
+function buildGeom(positions, indices, smooth) {
+  const geom = new THREE.BufferGeometry();
+  if (smooth) {
+    geom.setAttribute('position', new THREE.BufferAttribute(positions.slice(), 3));
+    geom.setIndex(new THREE.BufferAttribute(indices, 1));
+  } else {
+    // Expand to unindexed for flat shading
+    const flat = new Float32Array(indices.length * 3);
+    for (let i = 0; i < indices.length; i++) {
+      const v = indices[i];
+      flat[i*3] = positions[v*3]; flat[i*3+1] = positions[v*3+1]; flat[i*3+2] = positions[v*3+2];
+    }
+    geom.setAttribute('position', new THREE.BufferAttribute(flat, 3));
+  }
+  geom.computeVertexNormals();
+  return geom;
+}
+
+// ═══════════════════════════════════════════════
+//  Scene Mesh Update
+// ═══════════════════════════════════════════════
+function updateScene() {
+  if (meshObj) { scene.remove(meshObj); meshObj.geometry.dispose(); meshObj.material.dispose(); meshObj = null; }
+  if (wireObj) { scene.remove(wireObj); wireObj.geometry.dispose(); wireObj.material.dispose(); wireObj = null; }
+
+  const geom = buildGeom(wPositions, wIndices, optSmooth);
+  const mat = new THREE.MeshPhongMaterial({
+    color: meshColor, specular: 0x00d4ff, shininess: 80,
+    side: optDoubleSide ? THREE.DoubleSide : THREE.FrontSide,
+  });
+  meshObj = new THREE.Mesh(geom, mat);
+  meshObj.castShadow = true;
+  meshObj.receiveShadow = true;
+  scene.add(meshObj);
+
+  if (optWire) {
+    const wGeom = new THREE.EdgesGeometry(geom);
+    wireObj = new THREE.LineSegments(wGeom, new THREE.LineBasicMaterial({
+      color: 0x00d4ff, opacity: 0.25, transparent: true
+    }));
+    scene.add(wireObj);
+  }
+
+  document.getElementById('sv').textContent = (wPositions.length / 3).toLocaleString();
+  document.getElementById('sf').textContent = (wIndices.length / 3).toLocaleString();
+  if (cutPreviewEnabled) updateCutPlanePreview();
+}
+
+// ═══════════════════════════════════════════════
+//  Camera Fit
+// ═══════════════════════════════════════════════
+function fitCamera() {
+  if (!meshObj) return;
+  const box = new THREE.Box3().setFromObject(meshObj);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxD = Math.max(size.x, size.y, size.z) || 1;
+  gridHelper.position.set(center.x, center.y, box.min.z);
+  axesHelper.scale.setScalar(maxD * 0.15);
+  axesHelper.visible = true;
+  camera.near = maxD * 0.0001;
+  camera.far = maxD * 200;
+  const dist = maxD * 2.2;
+  // Z-up: approach from X-front, Y-side, Z-top
+  camera.position.set(center.x + dist, center.y - dist, center.z + dist * 0.6);
+  camera.up.set(0, 0, 1);
+  camera.updateProjectionMatrix();
+  controls.target.copy(center);
+  controls.update();
+}
+
+// ═══════════════════════════════════════════════
+//  File Loading
+// ═══════════════════════════════════════════════
+function handleFile(input) { if (input.files[0]) loadFile(input.files[0]); }
+
+function loadFile(file) {
+  if (!file.name.toLowerCase().endsWith('.stl')) {
+    return alert('Only .stl files are supported');
+  }
+  const reader = new FileReader();
+  reader.onload = e => loadBuffer(e.target.result, file.name, file.size);
+  reader.readAsArrayBuffer(file);
+}
+
+function loadBuffer(buf, name, size) {
+  try {
+      const raw = parseSTL(buf);
+      if (raw.length === 0) throw new Error('No vertex data found');
+      const { positions, indices } = weldVertices(raw);
+      origPositions = positions;
+      origIndices = indices;
+      wPositions = positions.slice();
+      wIndices = new Uint32Array(indices);
+      prevPositions = null; prevIndices = null;
+
+      document.getElementById('fileName').textContent = `${name}  (${(size/1024).toFixed(1)} KB)`;
+      document.getElementById('statsBar').style.display = 'flex';
+      document.getElementById('dropZone').style.display = 'none';
+      document.getElementById('hud').style.display = 'block';
+      document.getElementById('applyBtn').disabled = false;
+      document.getElementById('exportBtn').disabled = false;
+      document.getElementById('resetBtn').disabled = false;
+      document.getElementById('hollowBtn').disabled = false;
+      // dispose stale preview
+      disposeCutPreview();
+      // reset axis to Z
+      cutPlaneAxis = 'Z'; cutPlaneFlip = false;
+      document.getElementById('cutFlipToggle').classList.remove('on');
+      document.querySelectorAll('.axis-pill').forEach(el =>
+        el.classList.toggle('on', el.dataset.axis === 'Z'));
+
+      // Compute bounding box for thickness defaults
+      let minX=Infinity,minY=Infinity,minZ=Infinity,maxX=-Infinity,maxY=-Infinity,maxZ=-Infinity;
+      for (let v=0;v<positions.length/3;v++) {
+        const x=positions[v*3],y=positions[v*3+1],z=positions[v*3+2];
+        if(x<minX)minX=x; if(x>maxX)maxX=x;
+        if(y<minY)minY=y; if(y>maxY)maxY=y;
+        if(z<minZ)minZ=z; if(z>maxZ)maxZ=z;
+      }
+      const diagLen = Math.sqrt(Math.pow(maxX-minX,2)+Math.pow(maxY-minY,2)+Math.pow(maxZ-minZ,2));
+      const defThick = parseFloat((diagLen * 0.03).toPrecision(3));
+      const maxThick = parseFloat((diagLen * 0.25).toPrecision(3));
+      const minThick = parseFloat((diagLen * 0.001).toPrecision(3)) || 0.0001;
+      const stepThick = parseFloat((diagLen * 0.001).toPrecision(2)) || 0.0001;
+      const sl = document.getElementById('thickness');
+      sl.min = minThick; sl.max = maxThick; sl.step = stepThick; sl.value = defThick; sl.disabled = false;
+      document.getElementById('thickInput').value = defThick;
+      document.getElementById('thickVal').textContent = defThick;
+      const sizeStr = `X:${(maxX-minX).toFixed(2)} Y:${(maxY-minY).toFixed(2)} Z:${(maxZ-minZ).toFixed(2)}`;
+      document.getElementById('thickHint').innerHTML =
+        `BBox: ${sizeStr}<br>Recommended: <span style="color:var(--accent)">${defThick}</span> (3% of diagonal)`;
+
+      updateScene();
+      fitCamera();
+      updateCutPlaneUI();
+      updateHollowNote();
+  } catch(err) {
+    alert('Load error: ' + err.message);
+    console.error(err);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  Drag & Drop
+// ═══════════════════════════════════════════════
+const dz = document.getElementById('dropZone');
+viewport.addEventListener('dragover', e => {
+  e.preventDefault();
+  dz.style.display = 'flex';
+  dz.classList.add('ov');
+});
+viewport.addEventListener('dragleave', e => {
+  if (!viewport.contains(e.relatedTarget)) {
+    dz.classList.remove('ov');
+    if (meshObj) dz.style.display = 'none';
+  }
+});
+viewport.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('ov');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+  else if (meshObj) dz.style.display = 'none';
+});
+
+// ═══════════════════════════════════════════════
+//  Smoothing Application
+// ═══════════════════════════════════════════════
+function applySmoothing() {
+  if (!wPositions) return;
+  const iters  = +document.getElementById('iterations').value;
+  const λvec   = readStrengthVec();
+  const subLv  = +document.getElementById('subdivision').value;
+  const taubin = document.getElementById('taubinToggle').classList.contains('on');
+
+  prevPositions = wPositions.slice();
+  prevIndices = new Uint32Array(wIndices);
+  document.getElementById('undoBtn').disabled = false;
+
+  const triCount = wIndices.length / 3;
+  const finalTris = triCount * Math.pow(4, subLv);
+  document.getElementById('progLbl').textContent =
+    finalTris > 500000 ? `PROCESSING... (${Math.round(finalTris/1000)}K faces)` : 'PROCESSING...';
+  document.getElementById('prog').classList.add('on');
+
+  setTimeout(() => {
+    try {
+      let pos = wPositions, idx = wIndices;
+      for (let i = 0; i < subLv; i++) {
+        const r = subdivide(pos, idx);
+        pos = r.positions; idx = r.indices;
+      }
+      // Build sharpness-based weight mask
+      const sharpP = +document.getElementById('sharpPreserve').value;
+      let weights = null;
+      if (sharpP > 0) {
+        const sharpness = computeVertexSharpness(pos, idx);
+        const nv = pos.length / 3;
+        weights = new Float32Array(nv);
+        for (let v = 0; v < nv; v++) {
+          // Non-linear curve: even moderate angles (30-60°) get strong protection.
+          // pow(sharpness, 0.3) boosts mid-range values significantly:
+          //   flat  (0°  → s=0.00) → weight = 1.00  (full smoothing)
+          //   mild  (30° → s=0.17) → boosted ≈ 0.59 → weight drops even at low sharpP
+          //   sharp (90° → s=0.50) → boosted ≈ 0.84 → strong reduction
+          //   hard  (180°→ s=1.00) → boosted = 1.00 → weight = 1-sharpP (locked)
+          const boosted = Math.pow(sharpness[v], 0.3);
+          weights[v] = Math.max(0, 1 - sharpP * boosted);
+        }
+      }
+      pos = smoothMesh(pos, idx, iters, λvec, taubin, weights);
+      wPositions = pos;
+      wIndices = idx;
+      updateScene();
+    } catch(e) {
+      alert('Processing error: ' + e.message);
+      console.error(e);
+    }
+    document.getElementById('prog').classList.remove('on');
+  }, 60);
+}
+
+function undoSmoothing() {
+  if (!prevPositions) return;
+  wPositions = prevPositions; wIndices = prevIndices;
+  prevPositions = null; prevIndices = null;
+  document.getElementById('undoBtn').disabled = true;
+  updateScene();
+}
+
+function resetMesh() {
+  if (!origPositions) return;
+  wPositions = origPositions.slice();
+  wIndices = new Uint32Array(origIndices);
+  prevPositions = null; prevIndices = null;
+  document.getElementById('undoBtn').disabled = true;
+  updateScene();
+}
+
+// ═══════════════════════════════════════════════
+//  Display Toggles
+// ═══════════════════════════════════════════════
+function tog(el) { el.classList.toggle('on'); }
+
+function togWire(el) {
+  el.classList.toggle('on');
+  optWire = el.classList.contains('on');
+  if (meshObj) updateScene();
+}
+function togSmooth(el) {
+  el.classList.toggle('on');
+  optSmooth = el.classList.contains('on');
+  if (meshObj) updateScene();
+}
+// ═══════════════════════════════════════════════
+//  Strength Mode
+// ═══════════════════════════════════════════════
+let strengthMode = 'uniform';
+
+function setStrengthMode(mode) {
+  strengthMode = mode;
+  document.getElementById('modeUniform').classList.toggle('on', mode === 'uniform');
+  document.getElementById('modePerAxis').classList.toggle('on', mode === 'peraxis');
+  document.getElementById('uniformBlock').style.display  = mode === 'uniform'  ? '' : 'none';
+  document.getElementById('perAxisBlock').style.display  = mode === 'peraxis'  ? '' : 'none';
+}
+
+function onSubChange(v) {
+  document.getElementById('subVal').textContent = v;
+  document.getElementById('subWarn').style.display = +v > 1 ? 'block' : 'none';
+}
+
+
+// ═══════════════════════════════════════════════
+//  Thickness slider / input sync
+// ═══════════════════════════════════════════════
+function onThickChange(v) {
+  const f = parseFloat(v);
+  document.getElementById('thickVal').textContent = f.toPrecision(4).replace(/\.?0+$/,'');
+  document.getElementById('thickInput').value = f;
+}
+function onThickInputChange(v) {
+  const f = parseFloat(v);
+  if (isNaN(f) || f <= 0) return;
+  const sl = document.getElementById('thickness');
+  if (f > +sl.max) sl.max = f;
+  sl.value = f;
+  document.getElementById('thickVal').textContent = f;
+}
+
+// ═══════════════════════════════════════════════
+//  Shell / Hollow
+// ═══════════════════════════════════════════════
+function hollowMesh(positions, indices, thickness) {
+  const nv = positions.length / 3;
+  const nf = indices.length / 3;
+
+  // Per-vertex normals (area-weighted)
+  const normals = new Float32Array(nv * 3);
+  for (let i = 0; i < nf; i++) {
+    const a=indices[i*3],b=indices[i*3+1],c=indices[i*3+2];
+    const ax=positions[a*3],ay=positions[a*3+1],az=positions[a*3+2];
+    const bx=positions[b*3],by=positions[b*3+1],bz=positions[b*3+2];
+    const cx=positions[c*3],cy=positions[c*3+1],cz=positions[c*3+2];
+    const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
+    const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+    normals[a*3]+=nx; normals[a*3+1]+=ny; normals[a*3+2]+=nz;
+    normals[b*3]+=nx; normals[b*3+1]+=ny; normals[b*3+2]+=nz;
+    normals[c*3]+=nx; normals[c*3+1]+=ny; normals[c*3+2]+=nz;
+  }
+  for (let v=0;v<nv;v++) {
+    const x=normals[v*3],y=normals[v*3+1],z=normals[v*3+2];
+    const l=Math.sqrt(x*x+y*y+z*z)||1;
+    normals[v*3]/=l; normals[v*3+1]/=l; normals[v*3+2]/=l;
+  }
+
+  // Combined positions: outer [0..nv-1] + inner [nv..2nv-1]
+  const newPositions = new Float32Array(nv * 6);
+  for (let v=0;v<nv;v++) {
+    newPositions[v*3]   = positions[v*3];
+    newPositions[v*3+1] = positions[v*3+1];
+    newPositions[v*3+2] = positions[v*3+2];
+    newPositions[(nv+v)*3]   = positions[v*3]   - normals[v*3]   * thickness;
+    newPositions[(nv+v)*3+1] = positions[v*3+1] - normals[v*3+1] * thickness;
+    newPositions[(nv+v)*3+2] = positions[v*3+2] - normals[v*3+2] * thickness;
+  }
+
+  const newIdx = [];
+
+  // Outer faces (original winding)
+  // Inner faces (reversed winding → normals face inward)
+  for (let i=0;i<indices.length;i+=3) {
+    const a=indices[i],b=indices[i+1],c=indices[i+2];
+    newIdx.push(a, b, c);
+    newIdx.push(c+nv, b+nv, a+nv);
+  }
+
+  // Boundary edge caps
+  // Track directed edges a→b
+  const dirEdges = new Set();
+  for (let i=0;i<indices.length;i+=3) {
+    const a=indices[i],b=indices[i+1],c=indices[i+2];
+    dirEdges.add(a+'_'+b);
+    dirEdges.add(b+'_'+c);
+    dirEdges.add(c+'_'+a);
+  }
+  // Boundary: a→b exists but b→a does not
+  for (const key of dirEdges) {
+    const us = key.indexOf('_');
+    const a = +key.slice(0,us), b = +key.slice(us+1);
+    if (!dirEdges.has(b+'_'+a)) {
+      // Cap quad: outer_a, inner_a, inner_b, outer_b  (facing outward)
+      newIdx.push(a,    a+nv, b+nv);
+      newIdx.push(a,    b+nv, b);
+    }
+  }
+
+  return { positions: newPositions, indices: new Uint32Array(newIdx) };
+}
+
+function applyHollow() {
+  if (!wPositions) return;
+  const thickness = parseFloat(document.getElementById('thickInput').value ||
+                               document.getElementById('thickness').value);
+  if (isNaN(thickness) || thickness <= 0) {
+    alert('Please enter a valid thickness value'); return;
+  }
+
+  prevPositions = wPositions.slice();
+  prevIndices   = new Uint32Array(wIndices);
+  document.getElementById('undoBtn').disabled = false;
+
+  const withCut = useAsOpening;
+  document.getElementById('progLbl').textContent = withCut ? 'CUTTING & HOLLOWING...' : 'HOLLOWING...';
+  document.getElementById('prog').classList.add('on');
+
+  setTimeout(() => {
+    try {
+      let pos = wPositions, idx = wIndices;
+
+      // ── Step 1: cut without cap if opening mode is on ──
+      if (withCut) {
+        const cutPosV = parseFloat(document.getElementById('cutPos').value);
+        if (!isNaN(cutPosV) && document.getElementById('cutPos').disabled === false) {
+          const clipped = cutMeshByPlane(pos, idx, cutPlaneAxis, cutPosV, !cutPlaneFlip, false);
+          if (clipped.indices.length === 0)
+            throw new Error('Mesh is empty after cut. Check the cut plane position and direction.');
+          pos = clipped.positions;
+          idx = clipped.indices;
+        }
+      }
+
+      // ── Step 2: hollow ──
+      const { positions, indices } = hollowMesh(pos, idx, thickness);
+      wPositions = positions;
+      wIndices   = indices;
+      updateScene();
+    } catch(e) {
+      alert('Hollow error: ' + e.message);
+      console.error(e);
+    }
+    document.getElementById('prog').classList.remove('on');
+  }, 60);
+}
+
+// ═══════════════════════════════════════════════
+//  Cut Plane — UI helpers
+// ═══════════════════════════════════════════════
+function disposeCutPreview() {
+  if (!cutPreviewGroup) return;
+  scene.remove(cutPreviewGroup);
+  cutPreviewGroup.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) { if (Array.isArray(o.material)) o.material.forEach(m=>m.dispose()); else o.material.dispose(); }
+  });
+  cutPreviewGroup = null;
+}
+
+function updateCutPlaneUI() {
+  if (!wPositions) return;
+  const axisIdx = {X:0,Y:1,Z:2}[cutPlaneAxis];
+  let lo=Infinity, hi=-Infinity;
+  for (let v=0;v<wPositions.length/3;v++) {
+    const val=wPositions[v*3+axisIdx];
+    if(val<lo)lo=val; if(val>hi)hi=val;
+  }
+  const step = Math.max((hi-lo)/400, 1e-6);
+  // Default position: lower 3% of the range along the current axis
+  const defPos = lo + (hi - lo) * 0.03;
+  const sl = document.getElementById('cutPos');
+  sl.min=lo; sl.max=hi; sl.step=step; sl.value=defPos; sl.disabled=false;
+  document.getElementById('cutPosVal').textContent = defPos.toFixed(3);
+  document.getElementById('cutInfo').textContent =
+    `Range: ${lo.toFixed(3)} – ${hi.toFixed(3)}`;
+  if (cutPreviewEnabled) updateCutPlanePreview();
+}
+
+function selectCutAxis(axis) {
+  cutPlaneAxis = axis;
+  document.querySelectorAll('.axis-pill').forEach(el =>
+    el.classList.toggle('on', el.dataset.axis === axis));
+  if (wPositions) updateCutPlaneUI();
+  updateHollowNote();
+}
+
+function onCutPosChange(v) {
+  document.getElementById('cutPosVal').textContent = parseFloat(v).toFixed(3);
+  if (cutPreviewEnabled) updateCutPlanePreview();
+  updateHollowNote();
+}
+
+function togCutFlip(el) {
+  el.classList.toggle('on');
+  cutPlaneFlip = el.classList.contains('on');
+  const badge = document.getElementById('keepBadge');
+  badge.textContent = cutPlaneFlip ? 'BELOW' : 'ABOVE';
+  badge.className = 'keep-badge ' + (cutPlaneFlip ? 'keep-below' : 'keep-above');
+  if (cutPreviewEnabled) updateCutPlanePreview();
+  updateHollowNote();
+}
+
+function updateHollowNote() {
+  const note  = document.getElementById('hollowCutNote');
+  const label = document.getElementById('hollowCutLabel');
+  const btn   = document.getElementById('hollowBtn');
+  if (!note) return;
+  const cutReady = wPositions && !document.getElementById('cutPos').disabled;
+  const show = useAsOpening && cutReady;
+  note.style.display = show ? 'block' : 'none';
+  if (label) {
+    const dir = cutPlaneFlip ? 'below' : 'above';
+    const pos = parseFloat(document.getElementById('cutPos').value);
+    label.textContent = `${cutPlaneAxis} axis, keep ${dir} ${isNaN(pos)?'':pos.toFixed(3)}`;
+  }
+  if (btn) btn.textContent = (useAsOpening && cutReady) ? '⬡ CUT + HOLLOW' : '⬡ APPLY HOLLOW';
+}
+
+function togCutPreview(el) {
+  el.classList.toggle('on');
+  cutPreviewEnabled = el.classList.contains('on');
+  if (cutPreviewEnabled && wPositions) updateCutPlanePreview();
+  else disposeCutPreview();
+}
+
+// ═══════════════════════════════════════════════
+//  Cut Plane — 3D preview
+// ═══════════════════════════════════════════════
+function updateCutPlanePreview() {
+  disposeCutPreview();
+  if (!meshObj) return;
+
+  const box   = new THREE.Box3().setFromObject(meshObj);
+  const size  = box.getSize(new THREE.Vector3());
+  const cen   = box.getCenter(new THREE.Vector3());
+  const span  = Math.max(size.x, size.y, size.z) * 1.8;
+  const pos   = parseFloat(document.getElementById('cutPos').value) || 0;
+  const axIdx = {X:0,Y:1,Z:2}[cutPlaneAxis];
+  const keepAbove = !cutPlaneFlip;
+
+  cutPreviewGroup = new THREE.Group();
+
+  // Translucent plane
+  const pGeo = new THREE.PlaneGeometry(span, span);
+  const pMat = new THREE.MeshBasicMaterial({
+    color:0xff6b35, side:THREE.DoubleSide,
+    transparent:true, opacity:0.18, depthWrite:false
+  });
+  const planeMesh = new THREE.Mesh(pGeo, pMat);
+
+  // Edge frame
+  const eGeo = new THREE.EdgesGeometry(pGeo);
+  const eMat = new THREE.LineBasicMaterial({color:0xff6b35, transparent:true, opacity:0.9});
+  const frame = new THREE.LineSegments(eGeo, eMat);
+
+  // Apply axis rotation
+  if (cutPlaneAxis==='X') {
+    planeMesh.rotation.y = Math.PI/2; frame.rotation.y = Math.PI/2;
+    planeMesh.position.set(pos, cen.y, cen.z);
+  } else if (cutPlaneAxis==='Y') {
+    planeMesh.rotation.x = Math.PI/2; frame.rotation.x = Math.PI/2;
+    planeMesh.position.set(cen.x, pos, cen.z);
+  } else {
+    planeMesh.position.set(cen.x, cen.y, pos);
+  }
+  frame.position.copy(planeMesh.position);
+  frame.rotation.copy(planeMesh.rotation);
+
+  cutPreviewGroup.add(planeMesh);
+  cutPreviewGroup.add(frame);
+
+  // Arrow: shows "keep" direction (green)
+  const arrowDir = new THREE.Vector3(); arrowDir.setComponent(axIdx, keepAbove ? 1 : -1);
+  const arrowLen = span * 0.22;
+  const arrow = new THREE.ArrowHelper(
+    arrowDir, planeMesh.position.clone(), arrowLen,
+    0x00ff9d, arrowLen*0.22, arrowLen*0.12
+  );
+  cutPreviewGroup.add(arrow);
+
+  // Dashed discard region indicator (smaller, red arrow)
+  const discardDir = new THREE.Vector3(); discardDir.setComponent(axIdx, keepAbove ? -1 : 1);
+  const dArrow = new THREE.ArrowHelper(
+    discardDir, planeMesh.position.clone(), arrowLen*0.6,
+    0xff4444, arrowLen*0.14, arrowLen*0.08
+  );
+  cutPreviewGroup.add(dArrow);
+
+  scene.add(cutPreviewGroup);
+}
+
+// ═══════════════════════════════════════════════
+//  Cut Plane — algorithm
+// ═══════════════════════════════════════════════
+function buildBoundaryLoops(edges) {
+  if (!edges.length) return [];
+  const adj = new Map();
+  for (const [a,b] of edges) {
+    if (!adj.has(a)) adj.set(a,[]);
+    if (!adj.has(b)) adj.set(b,[]);
+    adj.get(a).push(b); adj.get(b).push(a);
+  }
+  const loops = [], visited = new Set();
+  for (const [startV] of adj) {
+    if (visited.has(startV)) continue;
+    const loop = []; let cur = startV;
+    while (true) {
+      if (visited.has(cur) && cur!==startV) break;
+      visited.add(cur); loop.push(cur);
+      const nb = adj.get(cur)||[];
+      let nxt=-1;
+      for (const n of nb) { if(!visited.has(n)){nxt=n;break;} }
+      if (nxt===-1) break;
+      cur = nxt;
+    }
+    if (loop.length>=3) loops.push(loop);
+  }
+  return loops;
+}
+
+function cutMeshByPlane(positions, indices, axis, planePos, keepAbove, addCap=true) {
+  const axIdx = {X:0,Y:1,Z:2}[axis];
+  const pn = [0,0,0]; pn[axIdx] = 1; // plane normal (unit)
+  const nv = positions.length/3;
+  const nf = indices.length/3;
+
+  // Signed distance for each vertex (+= keep side)
+  const dist = new Float32Array(nv);
+  for (let v=0;v<nv;v++) {
+    dist[v] = positions[v*3+axIdx] - planePos;
+    if (!keepAbove) dist[v] = -dist[v];
+  }
+
+  const np = Array.from(positions);   // grows with new intersection pts
+  const ni = [];                       // new index list
+  const eMap = new Map();              // edge key → intersection vertex id
+  const cutEdges = [];                 // [a,b] forming cut boundary
+
+  function intersect(a, b) {
+    const key = a<b ? a+'_'+b : b+'_'+a;
+    if (eMap.has(key)) return eMap.get(key);
+    const da=dist[a], db=dist[b], t=da/(da-db);
+    const id = np.length/3;
+    np.push(
+      positions[a*3]  +t*(positions[b*3]  -positions[a*3]),
+      positions[a*3+1]+t*(positions[b*3+1]-positions[a*3+1]),
+      positions[a*3+2]+t*(positions[b*3+2]-positions[a*3+2])
+    );
+    eMap.set(key, id);
+    return id;
+  }
+
+  for (let i=0;i<nf;i++) {
+    const a=indices[i*3], b=indices[i*3+1], c=indices[i*3+2];
+    const abv=dist[a]>=0, bbv=dist[b]>=0, cbv=dist[c]>=0;
+    const cnt=(abv?1:0)+(bbv?1:0)+(cbv?1:0);
+
+    if (cnt===3) {
+      ni.push(a,b,c);                         // all above → keep
+    } else if (cnt===0) {
+      /* all below → discard */
+    } else if (cnt===1) {
+      // one above: find it
+      let top,bot1,bot2;
+      if(abv){top=a;bot1=b;bot2=c;}
+      else if(bbv){top=b;bot1=c;bot2=a;}
+      else{top=c;bot1=a;bot2=b;}
+      const p1=intersect(top,bot1), p2=intersect(top,bot2);
+      ni.push(top,p1,p2);
+      cutEdges.push([p1,p2]);
+    } else {                                    // cnt===2
+      // two above: find the below vertex
+      let bot,t1,t2;
+      if(!abv){bot=a;t1=b;t2=c;}
+      else if(!bbv){bot=b;t1=c;t2=a;}
+      else{bot=c;t1=a;t2=b;}
+      const p1=intersect(t1,bot), p2=intersect(t2,bot);
+      ni.push(t1,t2,p2);
+      ni.push(t1,p2,p1);
+      cutEdges.push([p2,p1]);
+    }
+  }
+
+  // ── Cap the opening (only for standalone cut, not when used as hollow opening) ──
+  if (addCap) {
+  const loops = buildBoundaryLoops(cutEdges);
+  for (const loop of loops) {
+    const n=loop.length;
+    let cx=0,cy=0,cz=0;
+    for(const v of loop){cx+=np[v*3];cy+=np[v*3+1];cz+=np[v*3+2];}
+    cx/=n; cy/=n; cz/=n;
+    const cid = np.length/3;
+    np.push(cx,cy,cz);
+
+    const capStart = ni.length;
+    for(let j=0;j<n;j++) ni.push(cid, loop[j], loop[(j+1)%n]);
+
+    // Fix cap winding: cap should face away from kept side (-pn if keepAbove)
+    let cnx=0,cny=0,cnz=0;
+    for(let j=capStart;j<ni.length;j+=3){
+      const v0=ni[j],v1=ni[j+1],v2=ni[j+2];
+      const ax2=np[v1*3]-np[v0*3],ay2=np[v1*3+1]-np[v0*3+1],az2=np[v1*3+2]-np[v0*3+2];
+      const bx2=np[v2*3]-np[v0*3],by2=np[v2*3+1]-np[v0*3+1],bz2=np[v2*3+2]-np[v0*3+2];
+      cnx+=ay2*bz2-az2*by2; cny+=az2*bx2-ax2*bz2; cnz+=ax2*by2-ay2*bx2;
+    }
+    const dot = cnx*pn[0]+cny*pn[1]+cnz*pn[2];
+    const shouldFlip = keepAbove ? dot>0 : dot<0;
+    if (shouldFlip) {
+      for(let j=capStart;j<ni.length;j+=3)
+        [ni[j+1],ni[j+2]] = [ni[j+2],ni[j+1]];
+    }
+  }
+  } // end addCap
+
+  return { positions:new Float32Array(np), indices:new Uint32Array(ni) };
+}
+
+// ═══════════════════════════════════════════════
+//  Sidebar Collapse
+// ═══════════════════════════════════════════════
+function toggleSidebar() {
+  document.querySelector('aside').classList.toggle('collapsed');
+}
+
+// ═══════════════════════════════════════════════
+//  Model Color
+// ═══════════════════════════════════════════════
+function hexToInt(hex) {
+  return parseInt(hex.replace('#',''), 16);
+}
+
+function intToHex(n) {
+  return '#' + ('000000' + n.toString(16)).slice(-6);
+}
+
+function onColorPick(hex) {
+  meshColor = hexToInt(hex);
+  document.getElementById('colorSwatch').style.background = hex;
+  // Sync thumb position from hue
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h = 0;
+  if (max!==min) {
+    const d=max-min;
+    if (max===r) h=((g-b)/d+6)%6;
+    else if (max===g) h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h /= 6;
+  }
+  document.getElementById('colorBarThumb').style.left = (h*100) + '%';
+  if (meshObj) { meshObj.material.color.setHex(meshColor); }
+}
+
+function onColorBarClick(e) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const t = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  document.getElementById('colorBarThumb').style.left = (t*100) + '%';
+  // Convert hue fraction → full-saturation color
+  const h = t * 360;
+  const hex = hslToHex(h, 75, 45);
+  document.getElementById('colorPicker').value = hex;
+  document.getElementById('colorSwatch').style.background = hex;
+  meshColor = hexToInt(hex);
+  if (meshObj) { meshObj.material.color.setHex(meshColor); }
+}
+
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h/30) % 12;
+  const a = s * Math.min(l, 1-l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n), 1)));
+  const toHex = v => Math.round(f(v)*255).toString(16).padStart(2,'0');
+  return '#' + toHex(0) + toHex(8) + toHex(4);
+}
+
+// ═══════════════════════════════════════════════
+//  STL Export (Binary)
+// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+//  URL param: ?file=<url>  (must be last, uses loadBuffer)
+// ═══════════════════════════════════════════════
+(async function loadFromURLParam() {
+  const url = new URLSearchParams(location.search).get('file');
+  if (!url) return;
+  try {
+    document.getElementById('fileName').textContent = 'Loading from URL...';
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const buf = await resp.arrayBuffer();
+    const name = url.split('/').pop() || 'remote.stl';
+    loadBuffer(buf, name, url.length);
+  } catch(e) {
+    console.warn('URL param load failed:', e.message);
+    document.getElementById('fileName').textContent = 'Drop an STL file to get started';
+  }
+})();
+
+function exportSTL() {
+  if (!wPositions || !wIndices) return;
+  const nTri = wIndices.length / 3;
+  const buf = new ArrayBuffer(84 + nTri * 50);
+  const dv = new DataView(buf);
+
+  // Header (80 bytes)
+  const hdr = 'MeshSmooth v1.0 - Exported STL';
+  for (let i = 0; i < hdr.length && i < 80; i++) dv.setUint8(i, hdr.charCodeAt(i));
+
+  dv.setUint32(80, nTri, true);
+
+  let off = 84;
+  for (let i = 0; i < nTri; i++) {
+    const a = wIndices[i*3], b = wIndices[i*3+1], c = wIndices[i*3+2];
+    const ax=wPositions[a*3],ay=wPositions[a*3+1],az=wPositions[a*3+2];
+    const bx=wPositions[b*3],by=wPositions[b*3+1],bz=wPositions[b*3+2];
+    const cx=wPositions[c*3],cy=wPositions[c*3+1],cz=wPositions[c*3+2];
+    const ux=bx-ax,uy=by-ay,uz=bz-az, vx=cx-ax,vy=cy-ay,vz=cz-az;
+    let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+    const l = Math.sqrt(nx*nx+ny*ny+nz*nz) || 1;
+    dv.setFloat32(off, nx/l, true); off+=4;
+    dv.setFloat32(off, ny/l, true); off+=4;
+    dv.setFloat32(off, nz/l, true); off+=4;
+    for (const v of [a,b,c]) {
+      dv.setFloat32(off, wPositions[v*3],   true); off+=4;
+      dv.setFloat32(off, wPositions[v*3+1], true); off+=4;
+      dv.setFloat32(off, wPositions[v*3+2], true); off+=4;
+    }
+    dv.setUint16(off, 0, true); off+=2;
+  }
+
+  const blob = new Blob([buf], { type:'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, download:'smoothed_mesh.stl' });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
