@@ -1,6 +1,6 @@
 # CrayMesh
 
-![Demo Image](https://covao.github.io/CrayMesh/demo.png)
+![Demo Image](https://covao.github.io/CrayMesh/demo.gif)
 
 ## Overview
 
