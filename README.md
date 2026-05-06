@@ -7,8 +7,12 @@
 CrayMesh is a browser-based STL mesh smoother that lets you import, smooth, hollow, and export 3D models without any installation.
 
 ## Quick Start
+Try the live demo with a sample STL model:
+**Racing Car Body**
+https://covao.github.io/CrayMesh/CrayMesh.html?file=https://covao.github.io/CrayMesh/body_sample.stl
 
-https://covao.github.io/CrayMesh/CrayMesh.html?file=https://covao.github.io/CrayMesh/body_sample1.stl
+**Compact Car Body**
+https://covao.github.io/CrayMesh/CrayMesh.html?file=https://covao.github.io/CrayMesh/body_sample2.stl
 
 ## Features
 
@@ -46,8 +50,6 @@ To load a model via URL:
 ```
 CrayMesh.html?file=https://example.com/model.stl
 ```
-
-To use local libraries (offline use), place `three.min.js` and `OrbitControls.js` in the same directory as `CrayMesh.html`.
 
 ## Reference
 
