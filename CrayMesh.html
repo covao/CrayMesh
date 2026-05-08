@@ -289,6 +289,7 @@ canvas{display:block;width:100%;height:100%}
     </div>
   </div>
 
+
   <div class="sec">
     <div class="sec-t">Subdivision</div>
     <div class="cr">
@@ -313,6 +314,16 @@ canvas{display:block;width:100%;height:100%}
       <div class="color-bar" id="colorBar" onclick="onColorBarClick(event)">
         <div class="color-bar-thumb" id="colorBarThumb" style="left:57%"></div>
       </div>
+    </div>
+    <div class="cr" style="margin-top:6px">
+      <div class="cl"><span>Saturation</span><span class="cval" id="satVal">75%</span></div>
+      <input type="range" id="satSlider" min="0" max="100" step="1" value="75"
+        oninput="onSatChange(this.value)">
+    </div>
+    <div class="cr">
+      <div class="cl"><span>Opacity</span><span class="cval" id="opacityVal">100%</span></div>
+      <input type="range" id="opacitySlider" min="0" max="100" step="1" value="100"
+        oninput="onOpacityChange(this.value)">
     </div>
     <div class="tr" style="margin-top:4px"><span>Wireframe Overlay</span><div class="tog on" id="wireToggle" onclick="togWire(this)"></div></div>
     <div class="tr"><span>Smooth Shading</span><div class="tog" id="smoothToggle" onclick="togSmooth(this)"></div></div>
@@ -510,6 +521,8 @@ let optSmooth = false; // smooth shading off by default
 let optWire = true;    // wireframe on by default
 let optDoubleSide = true;
 let meshColor = 0x1e6fa0;
+let meshSaturation = 75;  // 0-100
+let meshOpacity = 1.0;    // 0-1
 
 // Cut plane state
 let cutPlaneAxis = 'Z';
@@ -695,11 +708,12 @@ function readStrengthVec() {
   };
 }
 
+
 // ═══════════════════════════════════════════════
 //  Midpoint Subdivision
 // ═══════════════════════════════════════════════
 function subdivide(positions, indices) {
-  const newPts = Array.from(positions); // grow-able array
+  const newPts = Array.from(positions);
   const newIdx = [];
   const edgeMap = new Map();
 
@@ -757,8 +771,11 @@ function updateScene() {
 
   const geom = buildGeom(wPositions, wIndices, optSmooth);
   const mat = new THREE.MeshPhongMaterial({
-    color: meshColor, specular: 0x00d4ff, shininess: 80,
+    color: meshColor, specular: 0x888888, shininess: 60,
     side: optDoubleSide ? THREE.DoubleSide : THREE.FrontSide,
+    transparent: meshOpacity < 1,
+    opacity: meshOpacity,
+    depthWrite: meshOpacity >= 0.99,
   });
   meshObj = new THREE.Mesh(geom, mat);
   meshObj.castShadow = true;
@@ -931,16 +948,11 @@ function applySmoothing() {
         const nv = pos.length / 3;
         weights = new Float32Array(nv);
         for (let v = 0; v < nv; v++) {
-          // Non-linear curve: even moderate angles (30-60°) get strong protection.
-          // pow(sharpness, 0.3) boosts mid-range values significantly:
-          //   flat  (0°  → s=0.00) → weight = 1.00  (full smoothing)
-          //   mild  (30° → s=0.17) → boosted ≈ 0.59 → weight drops even at low sharpP
-          //   sharp (90° → s=0.50) → boosted ≈ 0.84 → strong reduction
-          //   hard  (180°→ s=1.00) → boosted = 1.00 → weight = 1-sharpP (locked)
           const boosted = Math.pow(sharpness[v], 0.3);
           weights[v] = Math.max(0, 1 - sharpP * boosted);
         }
       }
+
       pos = smoothMesh(pos, idx, iters, λvec, taubin, weights);
       wPositions = pos;
       wIndices = idx;
@@ -1426,34 +1438,64 @@ function intToHex(n) {
 }
 
 function onColorPick(hex) {
+  // Store hue from the chosen color, then apply with current saturation
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  const max=Math.max(r,g,b),min=Math.min(r,g,b);
+  let h=0;
+  if(max!==min){
+    const d=max-min;
+    if(max===r)h=((g-b)/d+6)%6;
+    else if(max===g)h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h/=6;
+  }
+  document.getElementById('colorBarThumb').style.left=(h*100)+'%';
+  // Re-derive final color using current saturation
+  const finalHex = hslToHex(h*360, meshSaturation, 45);
+  meshColor = hexToInt(finalHex);
+  document.getElementById('colorSwatch').style.background = finalHex;
+  document.getElementById('colorPicker').value = finalHex;
+  applyColorState();
+}
+
+function onSatChange(v) {
+  meshSaturation = +v;
+  document.getElementById('satVal').textContent = v + '%';
+  // Recompute color from current hue
+  const thumb = document.getElementById('colorBarThumb');
+  const hue = parseFloat(thumb.style.left) / 100 * 360;
+  const hex = hslToHex(hue, meshSaturation, 45);
   meshColor = hexToInt(hex);
   document.getElementById('colorSwatch').style.background = hex;
-  // Sync thumb position from hue
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-  const max=Math.max(r,g,b), min=Math.min(r,g,b);
-  let h = 0;
-  if (max!==min) {
-    const d=max-min;
-    if (max===r) h=((g-b)/d+6)%6;
-    else if (max===g) h=(b-r)/d+2;
-    else h=(r-g)/d+4;
-    h /= 6;
+  document.getElementById('colorPicker').value = hex;
+  applyColorState();
+}
+
+function onOpacityChange(v) {
+  meshOpacity = +v / 100;
+  document.getElementById('opacityVal').textContent = v + '%';
+  applyColorState();
+}
+
+function applyColorState() {
+  if (meshObj) {
+    meshObj.material.color.setHex(meshColor);
+    meshObj.material.opacity = meshOpacity;
+    meshObj.material.transparent = meshOpacity < 1;
+    meshObj.material.depthWrite = meshOpacity >= 0.99;
+    meshObj.material.needsUpdate = true;
   }
-  document.getElementById('colorBarThumb').style.left = (h*100) + '%';
-  if (meshObj) { meshObj.material.color.setHex(meshColor); }
 }
 
 function onColorBarClick(e) {
   const rect = e.currentTarget.getBoundingClientRect();
   const t = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   document.getElementById('colorBarThumb').style.left = (t*100) + '%';
-  // Convert hue fraction → full-saturation color
-  const h = t * 360;
-  const hex = hslToHex(h, 75, 45);
+  const hex = hslToHex(t * 360, meshSaturation, 45);
   document.getElementById('colorPicker').value = hex;
   document.getElementById('colorSwatch').style.background = hex;
   meshColor = hexToInt(hex);
-  if (meshObj) { meshObj.material.color.setHex(meshColor); }
+  applyColorState();
 }
 
 function hslToHex(h, s, l) {
